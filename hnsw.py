@@ -188,35 +188,27 @@ class HNSW:
                     for dst, dist in neighborhood: 
                         f.write(f'{src} {dst}\n')
 
-def save(hnsw, file_path):
-    with open(file_path, "w") as f:
-        f.write(f'{len(hnsw.data)} {len(hnsw._graphs)}\n') 
-        f.write(repr(hnsw.data))
-        f.write('\nGRAPHS:')
-        f.write(repr(hnsw._graphs) )
-        
+    def save(self, file_path):
+        def convert_np_float32(obj):
+            if isinstance(obj, np.float32):
+                return float(obj)
+            return obj
+        with open(file_path, "w") as f:
+            f.write(json.dumps( {key: x.tolist() for key, x in self.data.items() }   )) 
+            f.write('\n')
+            f.write(json.dumps(self._graphs, default=convert_np_float32))
 
-def convert_np_float32(obj):
-    if isinstance(obj, np.float32):
-        return float(obj)
-    return obj
+    def load(self, file_path):
+        with open(file_path, "r") as f:
+            # First part is hnsw.data
+            hnsw_data_str = f.readline().strip()
+            hnsw_data = json.loads(hnsw_data_str)
+            self.data = {int(key): np.array(value) for key, value in hnsw_data.items()}
 
-def save(hnsw, file_path):
-    with open(file_path, "w") as f:
-        f.write(json.dumps( {key: x.tolist() for key, x in hnsw.data.items() }   )) 
-        f.write('\n')
-        f.write(json.dumps(hnsw._graphs, default=convert_np_float32))
-
-def load(hnsw, file_path):
-    with open(file_path, "r") as f:
-        # First part is hnsw.data
-        hnsw_data_str = f.readline().strip()
-        hnsw_data = json.loads(hnsw_data_str)
-        hnsw.data = {key: np.array(value) for key, value in hnsw_data.items()}
-
-        # Second part is hnsw._graphs
-        hnsw_graphs_str = f.readline().strip()
-        hnsw_graphs = json.loads(hnsw_graphs_str)
-        hnsw._graphs = hnsw_graphs
-    return hnsw                    
+            # Second part is hnsw._graphs
+            hnsw_graphs_str = f.readline().strip()
+            hnsw_graphs = json.loads(hnsw_graphs_str)
+            self._graphs =  [  {int(v):neighbor for v, neighbor in graph.items() }  for graph in hnsw_graphs]
+            # self._graphs = ra for graph in hnsw_graphs]
+            self._enter_point = list(self._graphs[-1].keys())[0]
                 
