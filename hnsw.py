@@ -199,4 +199,19 @@ class HNSW:
                 for src, neighborhood in graph.items():
                     f.write(f"{' '.join([src] + neighborhood)}\n")
 
-    
+    def load(self, file_path):
+        with open(file_path, "r") as f:
+            n, n_layers =  map(int, f.readline().split())
+            self.data = np.loadtxt(f, maxrows=n)
+            self._graphs = []
+            for l in range(n_layers):
+                n_vertex = int(f.readline())
+                graph = {}
+                for i in range(n_vertex):
+                    idxs = map(int, f.readline().split())
+                    dists = map(float, f.readline().split())
+                    src = graph[idxs[0]] 
+                    graph[src] = { j:dist for j, dist in zip(idxs[1:], dists)}
+                self._graphs.append(graph)
+                    
+                
