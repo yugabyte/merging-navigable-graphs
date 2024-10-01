@@ -197,6 +197,6 @@ class HNSW:
             for graph in self._graphs:
                 f.write(f'{len(graph)}\n') # n 
                 for src, neighborhood in graph.items():
-                    for dst, dist in neighborhood: 
-                        f.write(f'{src} {dst}\n')
+                    f.write(f"{' '.join([src] + neighborhood)}\n")
 
+    
