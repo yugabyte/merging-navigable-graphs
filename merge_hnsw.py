@@ -59,6 +59,11 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
     return merged_edges
 
 
+
+
+
+from tqdm import tqdm
+
 def merge1(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_k=1, next_step_ef=5, M = 5):
     '''
     hnsw_a          – first graph 
@@ -66,43 +71,58 @@ def merge1(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_
     search_ef    - ef parameter for searching candidates in the second graph
     next_step_k  - at each iteration we look for the next element around the current vertex in the first graph. 
                    However it can be surrounded by the "done" vertex, so we have to walk away. 
-                   Thus this parameter controlls how far from the current vertex we can go.
+                   Thus this parameter controls how far from the current vertex we can go.
     next_step_ef – a purpose of this parameter is similar {next_step_k}
     M            – number of point returned by the jump-search                 
     '''
     merged_edges = {}
-    not_done = set( hnsw_a._graphs[level].keys() )
+    not_done = set(hnsw_a._graphs[level].keys())
     m = hnsw_a._m0 if level == 0 else hnsw_a._m
-             
+    
+    # tqdm progress bar based on the initial size of the `not_done` set
+    progress_bar = tqdm(total=len(not_done), desc="Merging progress")
+
     while not_done:
+        # Start with a vertex from `not_done`
         curr_idx = not_done.pop()
 
-        # perform jump jump search 
-        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=True) #return_observed=True
+        # Perform jump search on graph B
+        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=True)
         staring_points = [idx for idx, dist in observed[:M]]
         
         while True:
-            # perform local search at graph B
+            # Perform local search at graph B
             observed.extend(hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=hnsw_a.data[curr_idx], k=m, eps=staring_points, ef=local_ef, return_observed=True))
-            # print(observed)           
             candidates_b = observed[:m]
-            # == build neighborhood for curr_idx and save to externalset of edges  ==            
-            candidates  = [ (idx_b, dist) for idx_b, dist in candidates_b] + [ (idx, dist) for idx, dist in hnsw_a._graphs[level][curr_idx]]
-            merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)                
-            # == == == == == == == == == == == == == == == == == == == == == == == ==
-    
-            staring_points = [idx for idx, dist in candidates_b[:m]] # ! determine a new set of enter_points for search on kgb
 
-            # do local serach at graph A
-            candidates_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level],q=hnsw_a.data[curr_idx], k=next_step_k, eps=[ curr_idx], ef=next_step_ef, return_observed=True) # decrease k to traverse closer to curr vertex
+            # Build neighborhood for curr_idx and save to external set of edges
+            candidates = [(idx_b, dist) for idx_b, dist in candidates_b] + [(idx, dist) for idx, dist in hnsw_a._graphs[level][curr_idx]]
+            merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)
+
+            # Determine new set of entry points for search in hnsw_b
+            staring_points = [idx for idx, dist in candidates_b[:m]]
+
+            # Perform local search at graph A to find next candidate
+            candidates_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=hnsw_a.data[curr_idx], k=next_step_k, eps=[curr_idx], ef=next_step_ef, return_observed=True)
             candidates_a = [c[0] for c in candidates_a[:next_step_k] if c[0] in not_done]
-    
+
             if not candidates_a:
                 break
+
+            # Move to the next candidate and remove it from `not_done`
             curr_idx = candidates_a[0]
             not_done.remove(curr_idx)
+            progress_bar.update(1)
             observed = []
+
+        # Update the progress bar
+        progress_bar.update(1)
+
+    progress_bar.close()
     return merged_edges
+
+
+
 
 def layer_merge1_func(hnsw_a, hnsw_b, merged_data, level) :
     merged_edges = {} 
