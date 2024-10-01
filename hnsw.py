@@ -5,6 +5,8 @@ import time
 import random
 from math import log2
 from heapq import heapify, heappop, heappush, heapreplace, nlargest, nsmallest
+import ast
+import json
 
 def l2_distance(a, b):
     return np.linalg.norm(a - b)
@@ -186,32 +188,35 @@ class HNSW:
                     for dst, dist in neighborhood: 
                         f.write(f'{src} {dst}\n')
 
-    def save(self, file_path):
-        with open(file_path, "w") as f:
-            f.write(f'{len(self.data)} {len(self._graphs)}\n') # n 
+def save(hnsw, file_path):
+    with open(file_path, "w") as f:
+        f.write(f'{len(hnsw.data)} {len(hnsw._graphs)}\n') 
+        f.write(repr(hnsw.data))
+        f.write('\nGRAPHS:')
+        f.write(repr(hnsw._graphs) )
+        
 
-            for x in self.data:
-                s = ' '.join([a.astype('str') for a in x ])
-                f.write(f'{s}\n')
+def convert_np_float32(obj):
+    if isinstance(obj, np.float32):
+        return float(obj)
+    return obj
 
-            for graph in self._graphs:
-                f.write(f'{len(graph)}\n') # n 
-                for src, neighborhood in graph.items():
-                    f.write(f"{' '.join([src] + neighborhood)}\n")
+def save(hnsw, file_path):
+    with open(file_path, "w") as f:
+        f.write(json.dumps( {key: x.tolist() for key, x in hnsw.data.items() }   )) 
+        f.write('\n')
+        f.write(json.dumps(hnsw._graphs, default=convert_np_float32))
 
-    def load(self, file_path):
-        with open(file_path, "r") as f:
-            n, n_layers =  map(int, f.readline().split())
-            self.data = np.loadtxt(f, maxrows=n)
-            self._graphs = []
-            for l in range(n_layers):
-                n_vertex = int(f.readline())
-                graph = {}
-                for i in range(n_vertex):
-                    idxs = map(int, f.readline().split())
-                    dists = map(float, f.readline().split())
-                    src = graph[idxs[0]] 
-                    graph[src] = { j:dist for j, dist in zip(idxs[1:], dists)}
-                self._graphs.append(graph)
-                    
+def load(hnsw, file_path):
+    with open(file_path, "r") as f:
+        # First part is hnsw.data
+        hnsw_data_str = f.readline().strip()
+        hnsw_data = json.loads(hnsw_data_str)
+        hnsw.data = {key: np.array(value) for key, value in hnsw_data.items()}
+
+        # Second part is hnsw._graphs
+        hnsw_graphs_str = f.readline().strip()
+        hnsw_graphs = json.loads(hnsw_graphs_str)
+        hnsw._graphs = hnsw_graphs
+    return hnsw                    
                 
