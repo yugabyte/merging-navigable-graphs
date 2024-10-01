@@ -31,24 +31,14 @@ def k_closest(candidates: list, curr, k, distance_func, data):
 class HNSW:
     # self._graphs[level][i] contains a {j: dist} dictionary,
     # where j is a neighbor of i and dist is distance
-
-    def _distance(self, x, y):
-        return self.distance_func(x, [y])[0]
-
-    def vectorized_distance_(self, x, ys):
+    
+    def vectorized_distance(self, x, ys):
         return [self.distance_func(x, y) for y in ys]
 
-    def __init__(self, distance_func, m=5, ef=10, ef_construction=30, m0=None, neighborhood_construction=heuristic, vectorized=False):
-        self.data = []
+    def __init__(self, distance_func, m=5, ef=10, ef_construction=30, m0=None, neighborhood_construction=heuristic):
+        self.data = {}
         self.distance_func = distance_func
         self.neighborhood_construction = neighborhood_construction
-
-        if vectorized:
-            self.distance = self._distance
-            self.vectorized_distance = distance_func
-        else:
-            self.distance = distance_func
-            self.vectorized_distance = self.vectorized_distance_
 
         self._m = m
         self._ef = ef
@@ -58,12 +48,7 @@ class HNSW:
         self._graphs = []
         self._enter_point = None
 
-    def add(self, elem, ef=None):
-
-        if ef is None:
-            ef = self._ef
-
-        distance = self.distance
+    def add(self, key, elem):
         data = self.data
         graphs = self._graphs
         point = self._enter_point
@@ -74,12 +59,11 @@ class HNSW:
         # print("level: %d" % level)
 
         # elem will be at data[idx]
-        idx = len(data)
-        data.append(elem)
-
+        idx = key
+        data[key] = elem
 
         if point is not None:  # the HNSW is not empty, we have an entry point
-            dist = distance(elem, data[point])
+            dist = self.distance_func(elem, data[point])
             # for all levels in which we dont have to insert elem,
             # we search for the closest neighbor
             for layer in reversed(graphs[level:]):
@@ -156,7 +140,7 @@ class HNSW:
                 ax.annotate( len(visited), self.data[current_vertex] )
 
             # check stop conditions #####
-            observed_sorted = sorted( observed.items(), key=lambda a: a[1] )
+            observed_sorted = sorted( observed.items(), key=lambda a: a[1] ) # TODO fix checking the stoping condition. Just find the ef_largest element
             # print(observed_sorted)
             ef_largets = observed_sorted[ min(len(observed)-1, ef-1 ) ]
             # print(ef_largets[0], '<->', -dist)
@@ -164,10 +148,10 @@ class HNSW:
                 break
             #############################
 
-            # Add current_vertex to visited set
+            # Add current_vertex to the visited set
             visited.add(current_vertex)
 
-            # Check the neighbors of the current vertex
+            # Check neighbors of current vertex
             for neighbor, _ in graph[current_vertex]:
                 if neighbor not in observed:
                     dist = self.distance_func(q, self.data[neighbor])                    
@@ -181,10 +165,14 @@ class HNSW:
                     
         
         # Sort the results by distance and return top-k
-        observed_sorted =sorted( observed.items(), key=lambda a: a[1] )
+        
         if return_observed:
+            observed_sorted = sorted( observed.items(), key=lambda a: a[1] )
             return observed_sorted
+        # TODO: Replace sorting by supporing sorted order only for k(ef)-first elements with the smallest distance
+        observed_sorted =sorted( observed.items(), key=lambda a: a[1] )
         return observed_sorted[:k]
+    
     def save_graph_plane(self, file_path):
         with open(file_path, "w") as f:
             f.write(f'{len(self.data)}\n')
@@ -198,20 +186,17 @@ class HNSW:
                     for dst, dist in neighborhood: 
                         f.write(f'{src} {dst}\n')
 
+    def save(self, file_path):
+        with open(file_path, "w") as f:
+            f.write(f'{len(self.data)} {len(self._graphs)}\n') # n 
 
+            for x in self.data:
+                s = ' '.join([a.astype('str') for a in x ])
+                f.write(f'{s}\n')
 
-# n = int(sys.argv[1]) # graph size
-# dim = int(sys.argv[2]) # vector dimensionality
-# m = int(sys.argv[3]) # avg number of vertex
-# m0 = int(sys.argv[3]) # avg number of vertex for the lower layer
+            for graph in self._graphs:
+                f.write(f'{len(graph)}\n') # n 
+                for src, neighborhood in graph.items():
+                    for dst, dist in neighborhood: 
+                        f.write(f'{src} {dst}\n')
 
-# hnsw = HNSW( distance_func=l2_distance, m=5, m0=7, ef=10, ef_construction=30,  neighborhood_construction = heuristic)
-
-# k =5 
-# dim = 2
-# n = 1000
-# data = np.array(np.float32(np.random.random((n, dim))))
-
-
-# for x in data:
-#     hnsw.add(x)
