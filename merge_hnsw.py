@@ -27,7 +27,7 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
     return hnsw_merged
 
 
-def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, M = 5):
+def merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=5, M = 5):
     '''
     hnsw_a    – first graph 
     hnsw_b    – second graph
@@ -45,7 +45,7 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
         # == build neighborhood for curr_idx and save to externalset of edges  ==
         candidates = [ (idx_b, dist) for idx_b, dist in candidates_b] + [ (idx, dist) for idx, dist in hnsw_a._graphs[level][curr_idx]]
         # merged_edges[curr_idx] = sorted ([ (idx_b + len(kga.data), dist) for idx_b, dist in candidates_b] + [ (idx, dist) for idx, dist in kga.edges[curr_idx]], key=lambda a: a[1])[:k]
-        merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, hnsw_a.data[curr_idx], k, distance_func, merged_data)    
+        merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, hnsw_a.data[curr_idx], m, hnsw_a.distance_func, merged_data)    
         # == == == == == == == == == == == == == == == == == == == == == == == ==
 
     for curr_idx in tqdm(hnsw_b._graphs[level].keys()): 
@@ -54,7 +54,7 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
         candidates_a = observed
         # == build neighborhood for curr_idx and save to externalset of edges  ==
         candidates = [(idx_a, dist) for idx_a, dist in candidates_a] + [(idx, dist) for idx, dist in hnsw_b._graphs[level][curr_idx]]
-        merged_edges[curr_idx] = hnsw_b.neighborhood_construction(candidates, hnsw_b.data[curr_idx], k, distance_func, merged_data)
+        merged_edges[curr_idx] = hnsw_b.neighborhood_construction(candidates, hnsw_b.data[curr_idx], m, hnsw_a.distance_func, merged_data)
         # == == == == == == == == == == == == == == == == == == == == == == == ==
 
     return merged_edges
