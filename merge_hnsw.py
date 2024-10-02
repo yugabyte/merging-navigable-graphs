@@ -36,9 +36,10 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
     M         – number of starting random enter points
                   
     '''
+    m = hnsw_a._m0 if level == 0 else hnsw_a._m
     merged_edges = {}
     for curr_idx in tqdm(hnsw_a._graphs[level].keys()): 
-        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=k, ef=search_ef, level=level, return_observed=True) #return_observed=True
+        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=True) #return_observed=True
         # candidates_b = observed[:k]
         candidates_b = observed
         # == build neighborhood for curr_idx and save to externalset of edges  ==
@@ -48,7 +49,7 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
         # == == == == == == == == == == == == == == == == == == == == == == == ==
 
     for curr_idx in tqdm(hnsw_b._graphs[level].keys()): 
-        observed = hnsw_a.search(q=hnsw_b.data[curr_idx], k=k, ef=search_ef, level=level, return_observed=True)
+        observed = hnsw_a.search(q=hnsw_b.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=True)
         # candidates_a = observed[:k]
         candidates_a = observed
         # == build neighborhood for curr_idx and save to externalset of edges  ==
@@ -58,11 +59,6 @@ def merge_naive(distance_func, hnsw_a, hnsw_b, merged_data, level, search_ef=5, 
 
     return merged_edges
 
-
-
-
-
-from tqdm import tqdm
 
 def merge1(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_k=1, next_step_ef=5, M = 5):
     '''
@@ -144,8 +140,8 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
     M            – number of starting random enter points                 
     '''
     merged_edges = {}
-    merged_data =  hnsw_a.data.copy()
-    merged_data.update(hnsw_b.data)
+
+    m = hnsw_a._m0 if level == 0 else hnsw_a._m
     
     not_done_a = set( hnsw_a._graphs[level].keys())
     not_done_b = set( hnsw_b._graphs[level].keys())
@@ -165,19 +161,19 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
             # searching for a new current
 
             # do local serach at graph A. # decrease k to traverse closer to curr vertex
-            observed_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=merged_data[curr_idx], k=k, eps=enter_points_a, ef=local_ef, return_observed=True) 
+            observed_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_a, ef=local_ef, return_observed=True) 
             # do local serach at graph A. # decrease k to traverse closer to curr vertex
-            observed_b = hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=merged_data[curr_idx], k=k, eps=enter_points_b, ef=local_ef, return_observed=True)
+            observed_b = hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_b, ef=local_ef, return_observed=True)
             
-            candidates_a = observed_a[:k]
-            candidates_b = observed_b[:k]
+            candidates_a = observed_a[:m]
+            candidates_b = observed_b[:m]
 
             # --== build neighborhood for new_curr_idx and save to externalset of edges  ==--
             if curr_idx < len(hnsw_a.data):                
                 candidates  = hnsw_a._graphs[level][curr_idx] + [ (idx_b, dist) for idx_b, dist in candidates_b]
             else:                
                 candidates =  candidates_a + [(idx_b, dist) for idx_b, dist in hnsw_b._graphs[level][curr_idx]]                     
-            merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], k, hnsw_a.distance_func, merged_data)                
+            merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)                
             # --== build neighborhood for new_curr_idx and save to externalset of edges  ==--
                   
             candidates_a_not_done = [ (idx, dist) for idx, dist in observed_a if idx in not_done]
@@ -199,5 +195,5 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
     return merged_edges
                            
 
-def layer_merge2_func(distance_func, merged_data, hnsw_a, hnsw_b, level) :
+def layer_merge2_func(hnsw_a, hnsw_b, merged_data, level) :
     return merge_alg2(hnsw_a=hnsw_a, hnsw_b=hnsw_b, merged_data=merged_data, level=level, jump_ef=20, local_ef=5, next_step_k=5, M = 5)
