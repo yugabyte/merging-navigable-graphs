@@ -146,6 +146,8 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
     not_done_a = set( hnsw_a._graphs[level].keys())
     not_done_b = set( hnsw_b._graphs[level].keys())
     not_done = not_done_a.union( [i  for i in not_done_b] )
+
+    progress_bar = tqdm(total=len(not_done), desc="Merging progress")
     
     while not_done:
         curr_idx = random.choice(list(not_done))
@@ -158,6 +160,7 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
         enter_points_b = [idx for idx, dist in observed_jump_b[:M]]
         while True:
             not_done.remove(curr_idx) # remove from not_done
+            progress_bar.update(1)
             # searching for a new current
 
             # do local serach at graph A. # decrease k to traverse closer to curr vertex
