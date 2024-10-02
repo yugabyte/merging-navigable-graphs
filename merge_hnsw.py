@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 from tqdm import tqdm
 from hnsw import HNSW
-from hnsw import l2_distance, heuristic
 import random
 
 def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
@@ -27,13 +26,12 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
     return hnsw_merged
 
 
-def merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=5, M = 5):
+def merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
     '''
-    hnsw_a    – first graph 
-    hnsw_b    – second graph
+    hnsw_a    – the first hnsw graph 
+    hnsw_b    – the second hnsw graph
     level     – mering level number
-    search_ef – ef parameter for searching candidates in the second grap
-    M         – number of starting random enter points
+    search_ef – ef parameter for searching candidates in the second graph
                   
     '''
     m = hnsw_a._m0 if level == 0 else hnsw_a._m
