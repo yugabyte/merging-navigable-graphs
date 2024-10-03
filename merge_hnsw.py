@@ -29,7 +29,7 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
     return hnsw_merged
 
 
-def merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
+def merge_naive_layer(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
     '''
     hnsw_a    – the first hnsw graph 
     hnsw_b    – the second hnsw graph
@@ -61,7 +61,13 @@ def merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
     return merged_edges
 
 
-def merge1(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_k=1, next_step_ef=5, M = 5):
+def merge_naive(hnsw_a, hnsw_b, merged_data, merge_ef = 20):
+    def layer_merge_naive_func(hnsw_a, hnsw_b, merged_data, level):
+        return merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=merge_ef)
+    return hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_naive_func)
+
+
+def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_k=1, next_step_ef=5, M = 5):
     '''
     hnsw_a          – first graph 
     hnsw_b          – second graph
@@ -119,18 +125,19 @@ def merge1(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_
     return merged_edges
 
 
+def merge1(hnsw_a, hnsw_b, merged_data, jump_ef=20, local_ef=5, next_step_k=5, next_step_ef=3, M = 5):
+    def layer_merge1_func(hnsw_a, hnsw_b, merged_data, level) :
+        merged_edges = {} 
+        # phase 1) 
+        merged_edges.update(merge1_layer(hnsw_a, hnsw_b, merged_data, level=level, jump_ef=jump_ef, local_ef=local_ef, next_step_k=next_step_k, next_step_ef=next_step_ef, M = M))
+        # phase 2)
+        merged_edges.update(merge1_layer(hnsw_b, hnsw_a, merged_data,  level=level, jump_ef=jump_ef, local_ef=local_ef, next_step_k=next_step_k, next_step_ef=next_step_ef, M = M))
+        return merged_edges
+
+    return hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge1_func)
 
 
-def layer_merge1_func(hnsw_a, hnsw_b, merged_data, level) :
-    merged_edges = {} 
-    # phase 1) 
-    merged_edges.update(merge1(hnsw_a, hnsw_b, merged_data, level=level, jump_ef=20, local_ef=5, next_step_k=5, next_step_ef=3, M = 5))
-    # phase 2)
-    merged_edges.update(merge1(hnsw_b, hnsw_a, merged_data,  level=level, jump_ef=20, local_ef=5, next_step_k=5, next_step_ef=3, M = 5))
-    return merged_edges
-
-
-def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, next_step_k=3, M = 3):
+def merge2_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, next_step_k=3, M = 3):
     '''
     hnsw_a       – first graph 
     hnsw_b       – second graph
@@ -199,5 +206,8 @@ def merge_alg2(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, nex
     return merged_edges
                            
 
-def layer_merge2_func(hnsw_a, hnsw_b, merged_data, level) :
-    return merge_alg2(hnsw_a=hnsw_a, hnsw_b=hnsw_b, merged_data=merged_data, level=level, jump_ef=20, local_ef=5, next_step_k=5, M = 5)
+def merge2(hnsw_a, hnsw_b, merged_data, jump_ef=20, local_ef=5, next_step_k=3, M=3):
+    def layer_merge2_func(hnsw_a, hnsw_b, merged_data, level) :
+        return merge2_layer(hnsw_a=hnsw_a, hnsw_b=hnsw_b, merged_data=merged_data, level=level, jump_ef=jump_ef, local_ef=local_ef, next_step_k=next_step_k, M=M)
+    
+    return hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge2_func)    
