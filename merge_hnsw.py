@@ -8,7 +8,7 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
     hnsw_merged = HNSW(distance_func=hnsw_a.distance_func, m=hnsw_a._m, m0=hnsw_a._m0, ef=hnsw_a._ef, ef_construction=hnsw_a._ef_construction, neighborhood_construction = hnsw_a.neighborhood_construction)
     hnsw_merged.data = merged_data
     hnsw_merged._graphs = []
-    levels_merged = max(len(hnsw_a._graphs), len(hnsw_b._graphs))
+    levels_merged_max = max(len(hnsw_a._graphs), len(hnsw_b._graphs))
     levels_merged_min = min(len(hnsw_a._graphs), len(hnsw_b._graphs))
 
     if len(hnsw_a._graphs) >= len(hnsw_b._graphs):
@@ -18,10 +18,13 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
 
     for level in range(levels_merged_min): 
         print('Merging level:', level)
-        # hnsw_merged._graphs.append(  merge_naive( hnsw_merged.distance_func, hnsw_a, hnsw_b, level, search_ef=20) ) 
-        hnsw_merged._graphs.append(  layer_merge_func(hnsw_a, hnsw_b, merged_data, level) ) 
+        hnsw_merged._graphs.append(  layer_merge_func(hnsw_a, hnsw_b, merged_data, level) )
 
-    #TODO 
+    for level in range(levels_merged_min, levels_merged_max):
+        if len(hnsw_a._graphs) >= len(hnsw_b._graphs):
+            hnsw_merged._graphs.append(hnsw_a._graphs[level])
+        else:
+            hnsw_merged._graphs.append(hnsw_b._graphs[level])
 
     return hnsw_merged
 
