@@ -1,17 +1,21 @@
 #!python3
-import sys
 import numpy as np
-import time
 import random
 from math import log2
 from heapq import heapify, heappop, heappush, heapreplace, nlargest, nsmallest
-import ast
 import json
 
 def l2_distance(a, b):
     return np.linalg.norm(a - b)
 
 def heuristic(candidates, curr, k, distance_func, data):
+    '''
+    candidates - list of candidate vertexes with the distances to the curr [(v_1, d_1), (v_2, d_2),..., (v_n, d_n)].
+    k – maximum size of the neighborhood 
+    distance_func – distance function for the distance caluclation between vertexes
+    returns the neighborhood for the vertex curr [(neighbour_1, dist_1), (neighbour_2, dist_2), ..., (neighbour_k, dist_k)]
+    data – the object for obtaining vertex content by its id.  it can be an array or a dictonary
+    '''
     candidates = sorted(candidates, key=lambda a: a[1])
     result_indx_set = {candidates[0][0]}
     result = [candidates[0]]
