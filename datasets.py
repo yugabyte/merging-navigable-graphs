@@ -54,4 +54,4 @@ def calculate_recall(hnsw, test, groundtruth=None, k=5, ef=10):
         recall = intersection / k
         recalls.append(recall)
 
-    return np.mean(recalls), total_calc/len(test)
+    return float(np.mean(recalls)), total_calc/len(test)
