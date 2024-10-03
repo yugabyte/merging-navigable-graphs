@@ -63,7 +63,7 @@ def merge_naive_layer(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
 
 def merge_naive(hnsw_a, hnsw_b, merged_data, merge_ef = 20):
     def layer_merge_naive_func(hnsw_a, hnsw_b, merged_data, level):
-        return merge_naive(hnsw_a, hnsw_b, merged_data, level, search_ef=merge_ef)
+        return merge_naive_layer(hnsw_a, hnsw_b, merged_data, level, search_ef=merge_ef)
     return hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_naive_func)
 
 
