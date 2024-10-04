@@ -139,13 +139,12 @@ def merge1(hnsw_a, hnsw_b, merged_data, jump_ef=20, local_ef=5, next_step_k=5, n
 
 def merge2_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, next_step_k=3, M = 3):
     '''
-    hnsw_a       – first graph 
-    hnsw_b       – second graph
-    search_ef    - ef parameter for searching candidates in the second graph
-    next_step_k  - at each iteration we look for the next element around the current vertex in the first graph. 
-                   However it can be surrounded by the "done" vertex, so we have to walk away. 
-                   Thus this parameter controlls how far from the current vertex we can go.
-    M            – number of starting random enter points                 
+    hnsw_a       – First hnsw graph 
+    hnsw_b       – Second hnsw graph
+    jump_ef      - ef parameter for search starting from the top level
+    local_ef     - ef parameter for search starting from some neighbours 
+    next_step_k  - Controls how far we can go over candidate set from current vertex to get a new current. Use next_step_k=-1 to minimize number of jumps
+    M            – Number of starting points for local search
     '''
     merged_edges = {}
 
@@ -161,24 +160,18 @@ def merge2_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, n
         curr_idx = random.choice(list(not_done))
     
         # do jump search   
-        observed_jump_a = hnsw_a.search(q=merged_data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=True) #return_observed=True
-        observed_jump_b = hnsw_b.search(q=merged_data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=True) #return_observed=True
-
-        enter_points_a = [idx for idx, dist in observed_jump_a[:M]]
-        enter_points_b = [idx for idx, dist in observed_jump_b[:M]]
+        enter_points_a = hnsw_a.search(q=merged_data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=False) 
+        enter_points_b = hnsw_b.search(q=merged_data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=False) 
         while True:
             not_done.remove(curr_idx) # remove from not_done
             progress_bar.update(1)
             # searching for a new current
 
-            # do local serach at graph A. # decrease k to traverse closer to curr vertex
-            observed_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_a, ef=local_ef, return_observed=True) 
-            # do local serach at graph A. # decrease k to traverse closer to curr vertex
-            observed_b = hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_b, ef=local_ef, return_observed=True)
+            # Do local search at graph A. Decrease local_ef to traverse closer to curr vertex
+            candidates_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_a, ef=local_ef, return_observed=False) 
+            # Do local search at graph B. Decrease local_ef to traverse closer to curr vertex
+            candidates_b = hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=merged_data[curr_idx], k=m, eps=enter_points_b, ef=local_ef, return_observed=False)
             
-            candidates_a = observed_a[:m]
-            candidates_b = observed_b[:m]
-
             # --== build neighborhood for new_curr_idx and save to externalset of edges  ==--
             if curr_idx < len(hnsw_a.data):                
                 candidates  = hnsw_a._graphs[level][curr_idx] + [ (idx_b, dist) for idx_b, dist in candidates_b]
@@ -187,10 +180,10 @@ def merge2_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, n
             merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)                
             # --== build neighborhood for new_curr_idx and save to externalset of edges  ==--
                   
-            candidates_a_not_done = [ (idx, dist) for idx, dist in observed_a if idx in not_done]
-            candidates_b_not_done = [ (idx , dist) for idx, dist in observed_b if idx in not_done]
+            candidates_a_not_done = [ (idx, dist) for idx, dist in candidates_a[:next_step_k] if idx in not_done]
+            candidates_b_not_done = [ (idx, dist) for idx, dist in candidates_b[:next_step_k] if idx in not_done]
             
-            candidates_not_done = [candidates_a_not_done[0]] if len(candidates_a_not_done) > 0 else [] + [candidates_b_not_done[0]] if len(candidates_b_not_done) > 0 else []
+            candidates_not_done = candidates_a_not_done + candidates_b_not_done
 
             if not candidates_not_done: 
                 break #jump to the random point
@@ -201,8 +194,6 @@ def merge2_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef = 20, local_ef=5, n
             curr_idx = new_curr_idx
             enter_points_a = [idx for idx, dist in candidates_a]
             enter_points_b = [idx for idx, dist in candidates_b]
-            observed_jump_a = []
-            observed_jump_b = []
     return merged_edges
                            
 
