@@ -34,15 +34,12 @@ def merge_naive_layer(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
     hnsw_a    – the first hnsw graph 
     hnsw_b    – the second hnsw graph
     level     – mering level number
-    search_ef – ef parameter for searching candidates in the second graph
-                  
+    search_ef – ef parameter for searching candidates in the second graph                  
     '''
     m = hnsw_a._m0 if level == 0 else hnsw_a._m
     merged_edges = {}
     for curr_idx in tqdm(hnsw_a._graphs[level].keys()): 
-        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=True) #return_observed=True
-        candidates_b = observed[:m]
-        # candidates_b = observed
+        candidates_b = hnsw_b.search(q=hnsw_a.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=False) 
         # == build neighborhood for curr_idx and save to externalset of edges  ==
         candidates = [ (idx_b, dist) for idx_b, dist in candidates_b] + [ (idx, dist) for idx, dist in hnsw_a._graphs[level][curr_idx]]
         # merged_edges[curr_idx] = sorted ([ (idx_b + len(kga.data), dist) for idx_b, dist in candidates_b] + [ (idx, dist) for idx, dist in kga.edges[curr_idx]], key=lambda a: a[1])[:k]
@@ -50,9 +47,7 @@ def merge_naive_layer(hnsw_a, hnsw_b, merged_data, level, search_ef=5):
         # == == == == == == == == == == == == == == == == == == == == == == == ==
 
     for curr_idx in tqdm(hnsw_b._graphs[level].keys()): 
-        observed = hnsw_a.search(q=hnsw_b.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=True)
-        candidates_a = observed[:m]
-        # candidates_a = observed
+        candidates_a=hnsw_a.search(q=hnsw_b.data[curr_idx], k=m, ef=search_ef, level=level, return_observed=True)
         # == build neighborhood for curr_idx and save to externalset of edges  ==
         candidates = [(idx_a, dist) for idx_a, dist in candidates_a] + [(idx, dist) for idx, dist in hnsw_b._graphs[level][curr_idx]]
         merged_edges[curr_idx] = hnsw_b.neighborhood_construction(candidates, hnsw_b.data[curr_idx], m, hnsw_a.distance_func, merged_data)
@@ -67,16 +62,18 @@ def merge_naive(hnsw_a, hnsw_b, merged_data, merge_ef = 20):
     return hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_naive_func)
 
 
-def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next_step_k=1, next_step_ef=5, M = 5):
+def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef, local_ef, next_step_k, next_step_ef, M):
     '''
-    hnsw_a          – first graph 
-    hnsw_b          – second graph
-    search_ef    - ef parameter for searching candidates in the second graph
+    hnsw_a       – first hnsw graph 
+    hnsw_b       – second hnsw graph
+    merged_data  – joined vectors data from the first and the second graph 
+    jump_ef      - ef parameter for search starting from the top level
+    local_ef     - ef parameter for search starting from some neighbours 
     next_step_k  - at each iteration we look for the next element around the current vertex in the first graph. 
                    However it can be surrounded by the "done" vertex, so we have to walk away. 
                    Thus this parameter controls how far from the current vertex we can go.
     next_step_ef – a purpose of this parameter is similar {next_step_k}
-    M            – number of point returned by the jump-search                 
+    M            – number of starting point for the local search.  
     '''
     merged_edges = {}
     not_done = set(hnsw_a._graphs[level].keys())
@@ -90,14 +87,12 @@ def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next
         curr_idx = not_done.pop()
 
         # Perform jump search on graph B
-        observed = hnsw_b.search(q=hnsw_a.data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=True)
-        staring_points = [idx for idx, dist in observed[:M]]
+        staring_points = hnsw_b.search(q=hnsw_a.data[curr_idx], k=M, ef=jump_ef, level=level, return_observed=False)
         
         while True:
             # Perform local search at graph B
-            observed.extend(hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=hnsw_a.data[curr_idx], k=m, eps=staring_points, ef=local_ef, return_observed=True))
-            candidates_b = observed[:m]
-
+            candidates_b = hnsw_b.beam_search(graph=hnsw_b._graphs[level], q=hnsw_a.data[curr_idx], k=m, eps=staring_points, ef=local_ef, return_observed=False)
+            
             # Build neighborhood for curr_idx and save to external set of edges
             candidates = [(idx_b, dist) for idx_b, dist in candidates_b] + [(idx, dist) for idx, dist in hnsw_a._graphs[level][curr_idx]]
             merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)
@@ -106,7 +101,7 @@ def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next
             staring_points = [idx for idx, dist in candidates_b[:m]]
 
             # Perform local search at graph A to find next candidate
-            candidates_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=hnsw_a.data[curr_idx], k=next_step_k, eps=[curr_idx], ef=next_step_ef, return_observed=True)
+            candidates_a = hnsw_a.beam_search(graph=hnsw_a._graphs[level], q=hnsw_a.data[curr_idx], k=next_step_k, eps=[curr_idx], ef=next_step_ef, return_observed=False)
             candidates_a = [c[0] for c in candidates_a[:next_step_k] if c[0] in not_done]
 
             if not candidates_a:
@@ -116,7 +111,6 @@ def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef=1, local_ef=5, next
             curr_idx = candidates_a[0]
             not_done.remove(curr_idx)
             progress_bar.update(1)
-            observed = []
 
         # Update the progress bar
         progress_bar.update(1)
