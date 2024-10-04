@@ -112,7 +112,7 @@ class HNSW:
 
         return self.beam_search(graph=graphs[level], q=q, k=k, eps=[point], ef=ef, return_observed=return_observed)
 
-    def beam_search(self, graph, q, k, eps, ef, ax=None, marker_size=20, return_observed=False):
+    def beam_search(self, graph, q, k, eps, ef, return_observed=False):
         '''
         graph – the layer where the search is performed
         q - query
@@ -127,23 +127,20 @@ class HNSW:
         visited = set()  # set of vertex used for extending the set of candidates
         observed = dict() # dict: vertex_id -> float – set of vertexes for which the distance were calculated
 
-        if ax:
-            ax.scatter(x=q[0], y=q[1], s=marker_size, color='red', marker='^')
-            ax.annotate('query', (q[0], q[1]))
-
         # Initialize the queue with the entry points
-        for ep in eps:
-            dist = self.distance_func(q, self.data[ep])
-            heappush(candidates, (dist, ep))
-            observed[ep] = dist
+        if type(eps[0]) is tuple:
+            for ep in eps:
+                heappush(candidates, (ep[1], ep[0]))
+                observed[ep[0]] = ep[1]   
+        else:
+            for ep in eps:
+                dist = self.distance_func(q, self.data[ep])
+                heappush(candidates, (dist, ep))    
+                observed[ep] = dist
 
         while candidates:
             # Get the closest vertex (furthest in the max-heap sense)
             dist, current_vertex = heappop(candidates)
-
-            if ax:
-                ax.scatter(x=self.data[current_vertex][0], y=self.data[current_vertex][1], s=marker_size, color='red')
-                ax.annotate( len(visited), self.data[current_vertex] )
 
             # check stop conditions #####
             observed_sorted = sorted( observed.items(), key=lambda a: a[1] ) # TODO fix checking the stoping condition. Just find the ef_largest element
@@ -164,14 +161,8 @@ class HNSW:
                     # if neighbor not in visited:
                     heappush(candidates, (dist, neighbor))
                     observed[neighbor] = dist                    
-                    if ax:
-                        ax.scatter(x=self.data[neighbor][0], y=self.data[neighbor][1], s=marker_size, color='yellow')
-                        # ax.annotate(len(visited), (self.data[neighbor][0], self.data[neighbor][1]))
-                        ax.annotate(len(visited), self.data[neighbor])
                     
-        
         # Sort the results by distance and return top-k
-        
         if return_observed:
             observed_sorted = sorted( observed.items(), key=lambda a: a[1] )
             return observed_sorted
