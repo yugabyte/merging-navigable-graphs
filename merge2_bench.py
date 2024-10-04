@@ -38,8 +38,9 @@ merge_params_list = [
 ]
 
 
-hnsw_a = HNSW( distance_func=l2_distance, m=5, m0=7, ef=10, ef_construction=30,  neighborhood_construction = heuristic)
-hnsw_b = HNSW( distance_func=l2_distance, m=5, m0=7, ef=10, ef_construction=30,  neighborhood_construction = heuristic)
+hnsw_a = HNSW( distance_func=l2_distance, m=16, m0=32, ef=32, ef_construction=32,  neighborhood_construction = heuristic)
+hnsw_b = HNSW( distance_func=l2_distance, m=16, m0=32, ef=32, ef_construction=32,  neighborhood_construction = heuristic)
+
 print('Loaing hnsw_a')
 hnsw_a.load('../save/sift1m/hnsw_a.txt')
 print('Loaing hnsw_b')
