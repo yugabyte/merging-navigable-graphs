@@ -19,7 +19,6 @@ result_file = 'result.csv'
 
 k=5
 efs=[32,40,50,64,72]
-exp = {}
 
 merge_params_list = [        
     {'jump_ef':20, 'local_ef':5, 'next_step_k':3, 'M':1},
@@ -41,8 +40,9 @@ merge_params_list = [
 
 hnsw_a = HNSW( distance_func=l2_distance, m=5, m0=7, ef=10, ef_construction=30,  neighborhood_construction = heuristic)
 hnsw_b = HNSW( distance_func=l2_distance, m=5, m0=7, ef=10, ef_construction=30,  neighborhood_construction = heuristic)
-
+print('Loaing hnsw_a')
 hnsw_a.load('save/sift1m/hnsw_a.txt')
+print('Loaing hnsw_b')
 hnsw_b.load('save/sift1m/hnsw_b.txt')
 
 merged_data = hnsw_a.data.copy()
@@ -53,7 +53,10 @@ _, test_data, groundtruth_data = load_sift_dataset(train_file = None,
                                                       groundtruth_file='datasets/sift1m-128d/sift_groundtruth.ivecs')
 
 for merge_params in merge_params_list:
+    exp = {}
     exp['params'] = merge_params
+    print('Executing:', merge_params)
+
     distance_count = 0
     hnsw_merged2 = merge2(hnsw_a, hnsw_b, merged_data, 
                           jump_ef=merge_params['jump_ef'], 
@@ -61,12 +64,13 @@ for merge_params in merge_params_list:
                           next_step_k=merge_params['next_step_k'],
                           M=merge_params['M'])
     exp['merge distance count'] = distance_count
+    print('merge distance count', distance_count)
 
     for ef in efs:
         distance_count = 0
         recall, _ = calculate_recall(hnsw_merged2, test_data, groundtruth=groundtruth_data, k=5, ef=ef)
-        exp[f'{k}@recall ef={ef}'] = recall
-        exp[f'dist count ef={ef}'] = distance_count/len(test_data)
+        exp[f'ef={ef} {k}@recall'] = recall
+        exp[f'ef={ef} dist count'] = distance_count/len(test_data)
 
     df = pd.DataFrame([exp])
     if os.path.isfile(result_file):
