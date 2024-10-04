@@ -15,7 +15,7 @@ def l2_distance(a, b):
     distance_count+=1
     return np.linalg.norm(a - b)
 
-result_file = 'result.csv'
+result_file = 'results/merge2_result.csv'
 
 k=5
 efs=[32,40,50,64,72]
@@ -54,7 +54,7 @@ _, test_data, groundtruth_data = load_sift_dataset(train_file = None,
                                                       groundtruth_file='../datasets/sift1m-128d/sift_groundtruth.ivecs')
 
 for merge_params in merge_params_list:
-    exp = {}
+    exp = {'algorithm': 'merge2'}
     exp['params'] = merge_params
     print('Executing:', merge_params)
 
@@ -67,8 +67,8 @@ for merge_params in merge_params_list:
     exp['merge distance count'] = distance_count
     print('merge distance count', distance_count)
 
-    print('saving to disk')
-    hnsw_merged2.save(f"../save/sift1m/hnsw_merged2_jef{merge_params['jump_ef']}_lef{merge_params['local_ef']}_nsk{merge_params['next_step_k']}_M{merge_params['M']}.txt")
+    # print('saving to disk')
+    # hnsw_merged2.save(f"../save/sift1m/hnsw_merged2_jef{merge_params['jump_ef']}_lef{merge_params['local_ef']}_nsk{merge_params['next_step_k']}_M{merge_params['M']}.txt")
 
     for ef in efs:
         distance_count = 0
