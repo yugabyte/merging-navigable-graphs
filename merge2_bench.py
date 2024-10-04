@@ -67,7 +67,7 @@ for merge_params in merge_params_list:
     print('merge distance count', distance_count)
 
     print('saving to disk')
-    hnsw_merged2.save(f'../save/sift1m/hnsw_merged2_jef{merge_params['jump_ef']}_lef{merge_params['local_ef']}_nsk{merge_params['next_step_k']}_M{merge_params['M']}.txt')
+    hnsw_merged2.save(f"../save/sift1m/hnsw_merged2_jef{merge_params['jump_ef']}_lef{merge_params['local_ef']}_nsk{merge_params['next_step_k']}_M{merge_params['M']}.txt")
 
     for ef in efs:
         distance_count = 0
