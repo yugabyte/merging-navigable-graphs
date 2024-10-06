@@ -35,7 +35,7 @@ def k_closest(candidates: list, curr, k, distance_func, data):
     return sorted(candidates, key=lambda a: a[1])[:k]
     
 class HNSW:
-    # self._graphs[level][i] contains a {j: dist} dictionary,
+    # self.graphs[level][i] contains a {j: dist} dictionary,
     # where j is a neighbor of i and dist is distance
     
     def vectorized_distance(self, x, ys):
@@ -46,22 +46,22 @@ class HNSW:
         self.distance_func = distance_func
         self.neighborhood_construction = neighborhood_construction
 
-        self._m = m
-        self._ef = ef
-        self._ef_construction = ef_construction
-        self._m0 = 2 * m if m0 is None else m0
-        self._level_mult = 1 / log2(m)
-        self._graphs = []
-        self._enter_point = None
+        self.m = m
+        self.ef = ef
+        self.ef_construction = ef_construction
+        self.m0 = 2 * m if m0 is None else m0
+        self.level_mult = 1 / log2(m)
+        self.graphs = []
+        self.enter_point = None
 
     def add(self, key, elem):
         data = self.data
-        graphs = self._graphs
-        point = self._enter_point
-        m = self._m
+        graphs = self.graphs
+        point = self.enter_point
+        m = self.m
 
         # level at which the element will be inserted
-        level = int(-log2(random.random()) * self._level_mult) + 1
+        level = int(-log2(random.random()) * self.level_mult) + 1
         # print("level: %d" % level)
 
         # elem will be at data[idx]
@@ -78,16 +78,16 @@ class HNSW:
 
             layer0 = graphs[0]
             for layer in reversed(graphs[:level]):
-                level_m = m if layer is not layer0 else self._m0
+                level_m = m if layer is not layer0 else self.m0
                 # navigate the graph and update ep with the closest
                 # nodes we find
-                # ep = self._search_graph(elem, ep, layer, ef)
-                candidates = self.beam_search(graph=layer, q=elem, k=level_m*2, eps=[point], ef=self._ef_construction)
+                # ep = self.search_graph(elem, ep, layer, ef)
+                candidates = self.beam_search(graph=layer, q=elem, k=level_m*2, eps=[point], ef=self.ef_construction)
                 point = candidates[0][0]
                 
                 # insert in g[idx] the best neighbors
                 # layer[idx] = layer_idx = {}
-                # self._select(layer_idx, ep, level_m, layer, heap=True)
+                # self.select(layer_idx, ep, level_m, layer, heap=True)
 
                 neighbors = self.neighborhood_construction(candidates=candidates, curr=idx, k=level_m, distance_func=self.distance_func, data=self.data)
                 layer[idx] = neighbors
@@ -101,12 +101,12 @@ class HNSW:
         for i in range(len(graphs), level):
             # for all new levels, we create an empty graph
             graphs.append({idx: []})
-            self._enter_point = idx
+            self.enter_point = idx
             
     # can be used for search after jump        
     def search(self, q, k=1, ef=10, level=0, return_observed=True):
-        graphs = self._graphs
-        point = self._enter_point
+        graphs = self.graphs
+        point = self.enter_point
         for layer in reversed(graphs[level:]):
             point, dist = self.beam_search(layer, q=q, k=1, eps=[point], ef=1)[0]
 
@@ -178,7 +178,7 @@ class HNSW:
                 s = ' '.join([a.astype('str') for a in x ])
                 f.write(f'{s}\n')
 
-            for graph in self._graphs:
+            for graph in self.graphs:
                 for src, neighborhood in graph.items():
                     for dst, dist in neighborhood: 
                         f.write(f'{src} {dst}\n')
@@ -191,7 +191,7 @@ class HNSW:
         with open(file_path, "w") as f:
             f.write(json.dumps( {key: x.tolist() for key, x in self.data.items() }   )) 
             f.write('\n')
-            f.write(json.dumps(self._graphs, default=convert_np_float32))
+            f.write(json.dumps(self.graphs, default=convert_np_float32))
 
     def load(self, file_path):
         with open(file_path, "r") as f:
@@ -200,10 +200,10 @@ class HNSW:
             hnsw_data = json.loads(hnsw_data_str)
             self.data = {int(key): np.array(value) for key, value in hnsw_data.items()}
 
-            # Second part is hnsw._graphs
+            # Second part is hnsw.graphs
             hnsw_graphs_str = f.readline().strip()
             hnsw_graphs = json.loads(hnsw_graphs_str)
-            self._graphs =  [  {int(v):neighbor for v, neighbor in graph.items() }  for graph in hnsw_graphs]
-            # self._graphs = ra for graph in hnsw_graphs]
-            self._enter_point = list(self._graphs[-1].keys())[0]
+            self.graphs =  [  {int(v):neighbor for v, neighbor in graph.items() }  for graph in hnsw_graphs]
+            # self.graphs = ra for graph in hnsw_graphs]
+            self.enter_point = list(self.graphs[-1].keys())[0]
                 
