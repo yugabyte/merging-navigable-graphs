@@ -1,0 +1,187 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+
+\title{Three Algorithms for Merging Navigable Graphs}
+\author{}
+\date{}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage[noend]{algpseudocode}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\begin{document}
+
+\maketitle
+
+\section {Local}
+
+
+% \begin{algorithm}
+% \caption{\textsc{Search}($G, q, L$)}\label{alg:search}
+% \textbf{Require:} Graph $G = (V, E)$, query $q \in \mathbb{R}^d$, $L \in \mathbb{Z}$ \\
+% \textbf{Ensure:} approximate nearest neighbor $v^* \in V$
+% \begin{algorithmic}[1]
+% \State $C \gets \textsc{InitializeCandidates}()$
+% \While{True}
+%     \State $u \gets$ nearest unvisited point to $q$ in $C$
+%     \State $U \gets \{v \mid (u, v) \in E\}$
+%     \For{$v \in U$}
+%         \If{$v$ is not visited}
+%             \State $C \gets C \cup \{v\}$
+%         \EndIf
+%     \EndFor
+%     \If{$|C| > L$}
+%         \State $C \gets$ top $L$ nearest points to $q$ in $C$
+%     \EndIf
+%     \If{$C$ is not updated}
+%         \State \textbf{break}
+%     \EndIf
+% \EndWhile
+% \State \Return nearest point to $q$ in $C$
+% \end{algorithmic}
+% \end{algorithm}
+
+We start from the basic search. 
+
+\begin{algorithm}
+\caption{\textsc{LocalSearch}($G, q, C, k, L$)}\label{alg:local_search}
+\textbf{Require:} Graph $G = (V, E)$, query $q \in \mathbb{R}^d$, initial set of candidate vertexes $C \subset V$,  $k \in \mathbb{N}$, $L \in \mathbb{N}$ \\
+\textbf{Ensure:} approximate k-nearest neighbors $V^* \subset V$
+\begin{algorithmic}[1]
+% \State $C \gets \textsc{InitializeCandidates}()$
+\While{True}
+    \State $u \gets$ nearest unvisited point to $q$ in $C$
+    \State $U \gets \{v \mid (u, v) \in E\}$
+    \For{$v \in U$}
+        \If{$v$ is not visited}
+            \State $C \gets C \cup \{v\}$
+        \EndIf
+    \EndFor
+    \If{$|C| > L$}
+        \State $C \gets$ top $L$ nearest points to $q$ in $C$
+    \EndIf
+    \If{$C$ is not updated}
+        \State \textbf{break}
+    \EndIf
+\EndWhile
+\State \Return nearest point to $q$ in $C$
+\end{algorithmic}
+\end{algorithm}
+
+$L$ is a parameter that controls the width of search. 
+It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef} parameter (expansion factor). 
+
+
+
+\begin{algorithm}
+\caption{\textsc{HNSW-Search}($\mathcal{H}, q, v_0, k, L, \ell $)}\label{alg:hnsw_search}
+\textbf{Require:} The HNSW layers represented as  a sequence of graphs $\mathcal{H} = (G_i)_{i=0}^{l_{max}} )$, query $q \in \mathbb{R}^d$, initial vertex $v_0 \in V$,  $k \in \mathbb{N}$, $L \in \mathbb{N}$, the layer number in which the search should be performed $\ell$ \\    
+\textbf{Ensure:} approximate k-nearest neighbors $V^* \subset V$
+\begin{algorithmic}[1]
+% \State $C \gets \textsc{InitializeCandidates}()$
+
+\State $v^*$ \gets $v_0$ 
+\For{$i = l_{max} \; \textbf{to} \; \ell $}
+    \State $v^*$ \gets \textsc{LocalSearch}($G=G_i, q=q, C={v^*}, k=1, L=L$)
+\EndFor
+
+\State \Return \textsc{LocalSearch}($ G=G_{\ell}, q=q, C={v^*}, k=k, L=L$)
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{Merge2}
+
+
+
+
+\begin{algorithm}
+\caption{\textsc{HNSW-Merge-Basic}($\mathcal{H}_a, \mathcal{H}_b$)}\label{alg:general_merge}
+\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$ \\
+\textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
+\begin{algorithmic}[1]
+
+% \State $\mathcal{H}_c \gets \emptyset$
+
+\For{$i = 0 \textbf{ to } \max(|\mathcal{H}_a|, |\mathcal{H}_b|) $}
+    \State $G^c_i \gets \text{Merge}(G^a_i, G^b_i, i)$
+\EndFor
+
+\State $\mathcal{H}_c \gets (G^c_i)_i^{\max(|\mathcal{H}_a|, |\mathcal{H}_b|)}$
+
+\State \Return $\mathcal{H}^c$
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}
+\caption{\textsc{Merge2}($G^a, G^b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M$)}\label{alg:merge2}
+\textbf{Require:} The graphs $G^a=(V^a,E^a), G^b=(V^b,E^b)$ \\
+\textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
+\begin{algorithmic}[1]
+
+\State $E^c \gets \emptyset$
+% \State $m \gets \mathcal{H}_a.m_0 \text{ if } \ell = 0 \text{ else } \mathcal{H}_a.m$
+\State $\mathcal{V}_{not\_done} \gets V^a \cup V^b$
+
+\While{$\mathcal{V}_{not\_done} \neq \emptyset$}
+    \State $v^* \gets \text{random choice from } \mathcal{V}_{not\_done}$
+    
+
+    \State $\mathcal{P}_a  \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^a, q=v*, v_0, k, L=\text{jump\_ef}, \ell $)
+
+    \State $\mathcal{P}_b \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^b, q=v*, v_0, k, L=\text{jump\_ef}, \ell $)
+    
+    
+    \While{True}
+        \State $\mathcal{V}_{not\_done} \gets \mathcal{V}_{not\_done} \setminus \{v^*\}$
+        
+        \State $\mathcal{C}^a \gets \text{local search in } \mathcal{H}_a.\mathcal{G}[\ell] \text{ from } D_{merged}[v^*]$
+        \State $\mathcal{C}^b \gets \text{local search in } \mathcal{H}_b.\mathcal{G}[\ell] \text{ from } D_{merged}[v^*]$
+        
+        \If{$v^* \in V^a $}
+            \State $\mathcal{C}_{merged} \gets  \{v : (v^*, v) \in E^a \} \cup  \mathcal{C}^b\}$
+        \Else
+            \State $\mathcal{C}_{merged} \gets  \{v : (v^*, v) \in E^b \} \cup  \mathcal{C}^a\}$
+        \EndIf
+        
+        % \State $\mathcal{E}_{merged}[v^*] \gets \text{neighborhood\_construction}(\mathcal{C}_{merged}, v^*, m, D_{merged})$
+
+        \State $E^c \gets E^c \cup \{ (v^*, v) : v \in \text{neighborhood\_construction}(\mathcal{C}_{merged}, v^*, m) \}$
+        
+        \State $\mathcal{C}^a_{not\_done} \gets \{(v \in \{\mathcal{C}^a_1, \mathcal{C}^a_2, ..., \mathcal{C}^a_{ \text{next\_step\_k} } \} \mid v \in \mathcal{V}_{not\_done} \}$
+
+        \State $\mathcal{C}^b_{not\_done} \gets \{(v \in \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \} \mid v \in \mathcal{V}_{not\_done} \}$
+        
+        
+        \State $\mathcal{C}_{not\_done} \gets \mathcal{C}^a_{not\_done} \cup \mathcal{C}^b_{not\_done}$
+        
+        \If{$\mathcal{C}_{not\_done} = \emptyset$}
+            \State \textbf{break}
+        \EndIf
+        
+        \State $\text{new\_curr} \gets \arg\min_{(i, d) \in \mathcal{C}^{not\_done}} d$
+        \State $v^* \gets \text{new\_curr}$
+        \State $\mathcal{P}_a \gets \{i \mid (i, d) \in \mathcal{C}_a\}$
+        \State $\mathcal{P}_b \gets \{i \mid (i, d) \in \mathcal{C}_b\}$
+    \EndWhile
+\EndWhile
+
+\State \Return $E^c$
+
+
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
