@@ -96,19 +96,56 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 \end{algorithmic}
 \end{algorithm}
 
-\section {Neighborhood Construction}
+\section {Neighborhood Construction Strategies}
 
-
-
-
-
-\section{Merge2}
-
-
-
+There are different strategies to form a vertex neighborhood. Our proposed merge algorithms are independent in neighborhood procedures. Merge algorithm can use a neighborhood construction procedure as an input parameter.
 
 \begin{algorithm}
-\caption{\textsc{HNSW-Merge-Basic}($\mathcal{H}_a, \mathcal{H}_b$)}\label{alg:general_merge}
+\caption{\textsc{KNN-Neighborhood-Construction}$(u,U, k)$}
+\label{alg:knntrategy}
+\textbf{Require:} vertex $u \in V$, neighbor candidates $U \subseteq V$, $k \in \mathbb{N} $\\
+\textbf{Ensure:} selected neighbors $U' \subseteq U$
+\begin{algorithmic}[1]
+    
+    \State $U' \gets \text{k-closest neighbors of } U \text{ to } u$
+    \State \Return $U'$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{\textsc{RNG-Neighborhood-Construction}$(u, U, m)$}
+\label{alg:rngstrategy}
+\textbf{Require:} vertex $u \in V$, neighbor candidates $U \subseteq V$, maximum neighborhood size $m \in \mathbb{N}$\\
+\textbf{Ensure:} selected neighbors $U' \subseteq U$
+\begin{algorithmic}[1]
+    \State sort $v \in U$ in ascending order of $\delta(u,v)$
+    \State $U' \gets \emptyset$
+    \For{$v \in U$}
+        \State $f \gets \text{true}$
+        \For{$w \in U'$}
+            \If{$\delta(u,v) \geq \delta(v,w)$}
+                \State $f \gets \text{false}$
+                \State \textbf{break}
+            \EndIf
+        \EndFor
+        \If{$f$}
+            \State $U' \gets U' \cup \{v\}$
+        \EndIf
+
+        \If{$|U'| \geq m $}
+            \State \textbf{break}
+        \EndIf
+    \EndFor
+    \State \Return $U'$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Merge Algorithms}
+
+\subsection{HNSW Merge Basic}
+
+\begin{algorithm}
+\caption{\textsc{HNSW-General-Merge}($\mathcal{H}_a, \mathcal{H}_b$)}\label{alg:general_merge}
 \textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$ \\
 \textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
 \begin{algorithmic}[1]
@@ -124,6 +161,62 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 \State \Return $\mathcal{H}^c$
 \end{algorithmic}
 \end{algorithm}
+
+
+
+
+\subsection{Merge1}
+
+\begin{algorithm}
+\caption{\textsc{Merge1}($\mathcal{H}_a, \mathcal{H}_b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge1}
+\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$, the size of the forming neighborhoods $m \in \mathbb{N} $ \\
+\textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
+\begin{algorithmic}[1]
+
+\State $E^c \gets \emptyset$
+\State $\mathcal{V}_{not\_done} \gets V^a$
+
+\While{$\mathcal{V}_{not\_done} \neq \emptyset$}
+    \State $v^* \gets \text{random choice from } \mathcal{V}_{not\_done}$
+    
+    \State $\mathcal{P}^b  \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^b, q=v^*, v_0, k=M, L=\text{jump\_ef}, \ell)$
+    
+    \While{True}
+        \State $\mathcal{V}_{not\_done} \gets \mathcal{V}_{not\_done} \setminus \{v^*\}$
+        
+        \State $\mathcal{C}^b  \gets \textsc{LocalSearch}(G=G^b, q=v^*, C=\mathcal{P}^b , k=m, L=\text{local\_ef})$
+        
+        \State $\mathcal{C} \gets  \{v : (v^*, v) \in E^a \} \cup \mathcal{C}^b$
+        
+        \State $E^c[v^*] \gets \textsc{NeighborhoodConstruction}(\mathcal{C}, v^*, m, D_{merged})$
+        
+        \State $\mathcal{C}_{not\_done} \gets \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \} \cap \mathcal{V}_{not\_done}$
+        
+        \If{$\mathcal{C}_{not\_done} = \emptyset$}
+            \State \textbf{break}
+        \EndIf
+        
+        \State $v^* \gets \underset{v \in \mathcal{C}_{not\_done}}{\mathrm{argmin}} \rho(v, v^*)$
+    \EndWhile
+\EndWhile
+
+\State $\mathcal{V}_{not\_done} \gets V^b$
+
+\While{$\mathcal{V}_{not\_done} \neq \emptyset$}
+    \State Repeat the same process for $V^b$ with the roles of $\mathcal{H}_a$ and $\mathcal{H}_b$ swapped.
+\EndWhile
+
+\State \Return $E^c$
+
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsection{Merge2}
+
+
+
 
 
 \begin{algorithm}
@@ -186,6 +279,8 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 \end{algorithmic}
 \end{algorithm}
 
+\section{Computational Experiments}
+TODO
 
 
 
