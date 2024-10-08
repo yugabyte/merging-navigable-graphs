@@ -12,13 +12,15 @@
 \usepackage{algorithmicx}
 \usepackage[noend]{algpseudocode}
 \usepackage{amsmath}
+\DeclareMathOperator*{\argminA}{arg\,min} % Jan Hlavacek
+\DeclareMathOperator*{\argminB}{argmin}   % Jan Hlavacek
 \usepackage{amsfonts}
 \usepackage{amssymb}
 \begin{document}
 
 \maketitle
 
-\section {Local}
+\section {Search}
 
 
 % \begin{algorithm}
@@ -85,14 +87,19 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 \begin{algorithmic}[1]
 % \State $C \gets \textsc{InitializeCandidates}()$
 
-\State $v^*$ \gets $v_0$ 
+\State $v^* \gets v_0$ 
 \For{$i = l_{max} \; \textbf{to} \; \ell $}
-    \State $v^*$ \gets \textsc{LocalSearch}($G=G_i, q=q, C={v^*}, k=1, L=L$)
+    \State $v^* \gets \textsc{LocalSearch}(G=G_i, q=q, C={v^*}, k=1, L=L)$
 \EndFor
 
 \State \Return \textsc{LocalSearch}($ G=G_{\ell}, q=q, C={v^*}, k=k, L=L$)
 \end{algorithmic}
 \end{algorithm}
+
+\section {Neighborhood Construction}
+
+
+
 
 
 \section{Merge2}
@@ -120,8 +127,8 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 
 
 \begin{algorithm}
-\caption{\textsc{Merge2}($G^a, G^b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M$)}\label{alg:merge2}
-\textbf{Require:} The graphs $G^a=(V^a,E^a), G^b=(V^b,E^b)$ \\
+\caption{\textsc{Merge2}($G^a, G^b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge2}
+\textbf{Require:} The graphs $G^a=(V^a,E^a), G^b=(V^b,E^b)$, the size of the forming neighborhoods $m \in \mathbb{N} $ \\
 \textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
 \begin{algorithmic}[1]
 
@@ -131,32 +138,33 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 
 \While{$\mathcal{V}_{not\_done} \neq \emptyset$}
     \State $v^* \gets \text{random choice from } \mathcal{V}_{not\_done}$
-    
 
-    \State $\mathcal{P}_a  \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^a, q=v*, v_0, k, L=\text{jump\_ef}, \ell $)
+    \State $\mathcal{P}^a  \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^a, q=v^*, v_0, k, L=\text{jump\_ef}, \ell $)
 
-    \State $\mathcal{P}_b \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^b, q=v*, v_0, k, L=\text{jump\_ef}, \ell $)
+    \State $\mathcal{P}^b \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^b, q=v^*, v_0, k, L=\text{jump\_ef}, \ell $)
     
     
     \While{True}
         \State $\mathcal{V}_{not\_done} \gets \mathcal{V}_{not\_done} \setminus \{v^*\}$
         
-        \State $\mathcal{C}^a \gets \text{local search in } \mathcal{H}_a.\mathcal{G}[\ell] \text{ from } D_{merged}[v^*]$
-        \State $\mathcal{C}^b \gets \text{local search in } \mathcal{H}_b.\mathcal{G}[\ell] \text{ from } D_{merged}[v^*]$
+
+        \State $ \mathcal{C}^a  \gets \textsc{LocalSearch}(G=G^a, q=v^*, C=\mathcal{P}^a  , k=m, L=\text{local\_ef})$
+        
+        \State $\mathcal{C}^b \gets \textsc{LocalSearch}(G=G^b, q=v^*, C=\mathcal{P}^b , k=m, L=\text{local\_ef})$
         
         \If{$v^* \in V^a $}
-            \State $\mathcal{C}_{merged} \gets  \{v : (v^*, v) \in E^a \} \cup  \mathcal{C}^b\}$
+            \State $\mathcal{C}\gets  \{v : (v^*, v) \in E^a \} \cup  \mathcal{C}^b\}$
         \Else
-            \State $\mathcal{C}_{merged} \gets  \{v : (v^*, v) \in E^b \} \cup  \mathcal{C}^a\}$
+            \State $\mathcal{C} \gets  \{v : (v^*, v) \in E^b \} \cup  \mathcal{C}^a\}$
         \EndIf
         
         % \State $\mathcal{E}_{merged}[v^*] \gets \text{neighborhood\_construction}(\mathcal{C}_{merged}, v^*, m, D_{merged})$
 
-        \State $E^c \gets E^c \cup \{ (v^*, v) : v \in \text{neighborhood\_construction}(\mathcal{C}_{merged}, v^*, m) \}$
+        \State $E^c \gets E^c \cup \{ (v^*, v) : v \in \text{neighborhood\_construction}(\mathcal{C}, v^*, m) \}$
         
-        \State $\mathcal{C}^a_{not\_done} \gets \{(v \in \{\mathcal{C}^a_1, \mathcal{C}^a_2, ..., \mathcal{C}^a_{ \text{next\_step\_k} } \} \mid v \in \mathcal{V}_{not\_done} \}$
+        \State $\mathcal{C}^a_{not\_done} \gets \{\mathcal{C}^a_1, \mathcal{C}^a_2, ..., \mathcal{C}^a_{ \text{next\_step\_k} } \} \cap \mathcal{V}_{not\_done}$
 
-        \State $\mathcal{C}^b_{not\_done} \gets \{(v \in \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \} \mid v \in \mathcal{V}_{not\_done} \}$
+        \State $\mathcal{C}^b_{not\_done} \gets \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \}  \cap \mathcal{V}_{not\_done}$
         
         
         \State $\mathcal{C}_{not\_done} \gets \mathcal{C}^a_{not\_done} \cup \mathcal{C}^b_{not\_done}$
@@ -165,10 +173,10 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
             \State \textbf{break}
         \EndIf
         
-        \State $\text{new\_curr} \gets \arg\min_{(i, d) \in \mathcal{C}^{not\_done}} d$
-        \State $v^* \gets \text{new\_curr}$
-        \State $\mathcal{P}_a \gets \{i \mid (i, d) \in \mathcal{C}_a\}$
-        \State $\mathcal{P}_b \gets \{i \mid (i, d) \in \mathcal{C}_b\}$
+        \State $v^* \gets \underset{v \in \mathcal{C}_{not\_done}}{\mathrm{argmin}} \rho(v, v^*)$
+        
+        \State $\mathcal{P}_a \gets \mathcal{C}^a$
+        \State $\mathcal{P}_b \gets \mathcal{C}^b$
     \EndWhile
 \EndWhile
 
