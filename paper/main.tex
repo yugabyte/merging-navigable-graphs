@@ -16,6 +16,7 @@
 \DeclareMathOperator*{\argminB}{argmin}   % Jan Hlavacek
 \usepackage{amsfonts}
 \usepackage{amssymb}
+\usepackage{nameref}
 \begin{document}
 
 \maketitle
@@ -48,7 +49,7 @@
 % \end{algorithmic}
 % \end{algorithm}
 
-We start from the basic search. 
+We start from the basic search over the graph. 
 
 \begin{algorithm}
 \caption{\textsc{LocalSearch}($G, q, C, k, L$)}\label{alg:local_search}
@@ -142,15 +143,17 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 
 \section{Merge Algorithms}
 
-\subsection{HNSW Merge Basic}
+We provide 3 merge algorithms: "Naive Merge", "Merge1", and "Merge2". We also refer to these algorithm as layer-merge algorithms. "Naive Merge" is a straight forward method, while "Merge1" and "Merge2" are more advanced. Together, these two algorithms constitute the main contribution of the work. The HNSW structure is a sequence of graphs, called layers. We start from description of a general algorithm for merging multi layers structure.
+
+\subsection{HNSW General Merge}
+
+HNSW-General-Merge algorithm \ref{alg:general_merge} is a straight forward. It uses one of the layer-merge algorithm to merge each HNSW layer. To able layer-merge algorithm to perform fast search using multi-layer structure of HNSW, HNSW-General-Merge algorithm passes to layer merge algorithm both HNSW structures $\mathcal{H}_a, \mathcal{H}_b$, and the layer number $\ell=i$ to which the merge should be performed. An order of merging layers doesn't mater. Thus merging of layers can be done in parallel.
 
 \begin{algorithm}
 \caption{\textsc{HNSW-General-Merge}($\mathcal{H}_a, \mathcal{H}_b$)}\label{alg:general_merge}
 \textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$ \\
 \textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
 \begin{algorithmic}[1]
-
-% \State $\mathcal{H}_c \gets \emptyset$
 
 \For{$i = 0 \textbf{ to } \max(|\mathcal{H}_a|, |\mathcal{H}_b|) $}
     \State $G^c_i \gets \text{Merge}(\mathcal{H}_a, \mathcal{H}_b, \ell=i, \text{algorithm specific params})$
@@ -163,7 +166,8 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 \end{algorithm}
 
 \subsection{Naive Merge}
-
+The Naive Merge algorithm \ref{alg:merge_naive} surprisingly is very simple. It takes one vertex $v^*$ by one from the graph $G^a$. Then algorithm prepares the candidate set $\mathcal{C}$ for a new neighborhood (lines 7,8). It uses \textsc{HNSW-Search} to get $m$-closest vertices to $v^*$ in the graph $G^b$, and combines with an old neighborhood of the vertex $v^*$. After that in the line 9 the candidate set $\mathcal{C}$ is passed into the neighborhood construction function, which selects the vertices for the new merged neighborhood for $v^*$.
+Lines 10-13 contains the same logic for the forming new neigborhoods of graph $G^b$
 
 \begin{algorithm}
 \caption{\textsc{Merge-Naive}($\mathcal{H}_a, \mathcal{H}_b,  \ell, \text{search\_ef}$)}\label{alg:merge_naive}
@@ -192,10 +196,10 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 \end{algorithmic}
 \end{algorithm}
 
-
-
-
 \subsection{Merge1}
+The most effort of \textsc{Merge-Naive} algorithm lies in the set of neighborhood candidates from the opposite graph utilising \textsc{HNSW-Search} procedure, that traverses layers graph from the top-level down to layer number $\ell$ every time. The number of computations can be reduced if we select the next vertex $v^*$ close to the previous one (line 15), instead of choosing it randomly. Thus, for new $v^*$ the neighborhood candidates will be  also close to the previous candidates set. To search this new neighborhood candidates we can use \textsc{LocalSearch} procedure, that traversing the same graph staring from the previous neighborhood candidates set $\mathcal{P}^b$ (line 11,14). In the line 14 in set $\mathcal{P}^b$ we keep only $M$-closest to $v^*$ candidates.\\
+In the line 15 almost at each iteration we try select new $v^*$ vertex close to the previous  $v^*$ that was not already processed.  
+To ensure that new $v^*$ vertex are not very far from the previous $v^*$ we bound the size of results of \textsc{LocalSearch} procedure controlling by "next\_step\_k" parameter. Once \textsc{LocalSearch} can't find enough close not processed vertex, we choice new $v^*$ from the set $\mathcal{V}_not\_done$ randomly.
 
 \begin{algorithm}
 \caption{\textsc{Merge1}($\mathcal{H}_a, \mathcal{H}_b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge1}
@@ -221,14 +225,18 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
         \State $\mathcal{C} \gets  \{v : (v^*, v) \in E^a \} \cup \mathcal{C}^b$
         
         \State $E^c \gets E^c \cup  \{ (v^*, v)  : v \in \textsc{NeighborhoodConstruction}(\mathcal{C}, v^*, m) \}$
+
+        \State $\mathcal{P}^b \gets \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_M \} $
+
+        \State $\mathcal{C}^a  \gets \textsc{LocalSearch}(G=G^a, q=v^*, C=\{v^*\} , k=\text{next\_step\_k}, L=\text{next\_step\_ef})$
         
-        \State $\mathcal{C}_{not\_done} \gets \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \} \cap \mathcal{V}_{not\_done}$
+        \State $\mathcal{C}^a \gets \mathcal{C}^a \cap \mathcal{V}_{not\_done}$
         
-        \If{$\mathcal{C}_{not\_done} = \emptyset$}
+        \If{$\mathcal{C}^a = \emptyset$}
             \State \textbf{break}
         \EndIf
         
-        \State $v^* \gets \underset{v \in \mathcal{C}_{not\_done}}{\mathrm{argmin}} \rho(v, v^*)$
+        \State $v^* \gets \mathcal{C}^a_1$
     \EndWhile
 \EndWhile
 
@@ -265,7 +273,7 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 \State $\mathcal{V}_{not\_done} \gets V^a \cup V^b$
 
 \While{$\mathcal{V}_{not\_done} \neq \emptyset$}
-    \State $v^* \gets \text{random choice from } \mathcal{V}_{not\_done}$
+    \State $v^* \gets \text{randomly choice from } \mathcal{V}_{not\_done}$
 
     \State $\mathcal{P}^a  \gets \textsc{HNSW-Search}(\mathcal{H}=\mathcal{H}^a, q=v^*, v_0, k, L=\text{jump\_ef}, \ell $)
 
