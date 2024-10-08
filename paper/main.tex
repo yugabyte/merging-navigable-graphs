@@ -166,8 +166,8 @@ HNSW-General-Merge algorithm \ref{alg:general_merge} is a straight forward. It u
 \end{algorithm}
 
 \subsection{Naive Merge}
-The Naive Merge algorithm \ref{alg:merge_naive} surprisingly is very simple. It takes one vertex $v^*$ by one from the graph $G^a$. Then algorithm prepares the candidate set $\mathcal{C}$ for a new neighborhood (lines 7,8). It uses \textsc{HNSW-Search} to get $m$-closest vertices to $v^*$ in the graph $G^b$, and combines with an old neighborhood of the vertex $v^*$. After that in the line 9 the candidate set $\mathcal{C}$ is passed into the neighborhood construction function, which selects the vertices for the new merged neighborhood for $v^*$.
-Lines 10-13 contains the same logic for the forming new neigborhoods of graph $G^b$
+The Naive Merge algorithm \ref{alg:merge_naive} surprisingly is very simple. It takes one vertex $v^*$ by one from the graph $G^a$. Then algorithm prepares the candidate set $\mathcal{C}$ for a new neighborhood (lines 6,7). It uses \textsc{HNSW-Search} to get $m$-closest vertices to $v^*$ in the graph $G^b$, and combines with an old neighborhood of the vertex $v^*$. After that in the line 8 the candidate set $\mathcal{C}$ is passed into the neighborhood construction function, which selects the vertices for the new merged neighborhood for $v^*$.
+Lines 9-12 contains the same logic for the forming new neighborhoods of graph $G^b$
 
 \begin{algorithm}
 \caption{\textsc{Merge-Naive}($\mathcal{H}_a, \mathcal{H}_b,  \ell, \text{search\_ef}$)}\label{alg:merge_naive}
@@ -178,7 +178,7 @@ Lines 10-13 contains the same logic for the forming new neigborhoods of graph $G
 \State $E^c \gets \emptyset$
 \State $G^a \gets G^a_{\ell}$
 \State $G^b \gets G^b_{\ell}$
-\State $m \gets \mathcal{H}_a.m_0$ if $\ell = 0$ else $\mathcal{H}_a.m$
+% \State $m \gets \mathcal{H}_a.m_0$ if $\ell = 0$ else $\mathcal{H}_a.m$
 
 \For{$v^* \in V^a$}
     \State $\mathcal{C}^b \gets \textsc{HNSW-Search}(\mathcal{H} = \mathcal{H}^b, q = v^*, v_0, k = m, L = \text{search\_ef}, \ell)$
@@ -199,7 +199,8 @@ Lines 10-13 contains the same logic for the forming new neigborhoods of graph $G
 \subsection{Merge1}
 The most effort of \textsc{Merge-Naive} algorithm lies in the set of neighborhood candidates from the opposite graph utilising \textsc{HNSW-Search} procedure, that traverses layers graph from the top-level down to layer number $\ell$ every time. The number of computations can be reduced if we select the next vertex $v^*$ close to the previous one (line 15), instead of choosing it randomly. Thus, for new $v^*$ the neighborhood candidates will be  also close to the previous candidates set. To search this new neighborhood candidates we can use \textsc{LocalSearch} procedure, that traversing the same graph staring from the previous neighborhood candidates set $\mathcal{P}^b$ (line 11,14). In the line 14 in set $\mathcal{P}^b$ we keep only $M$-closest to $v^*$ candidates.\\
 In the line 15 almost at each iteration we try select new $v^*$ vertex close to the previous  $v^*$ that was not already processed.  
-To ensure that new $v^*$ vertex are not very far from the previous $v^*$ we bound the size of results of \textsc{LocalSearch} procedure controlling by "next\_step\_k" parameter. Once \textsc{LocalSearch} can't find enough close not processed vertex, we choice new $v^*$ from the set $\mathcal{V}_not\_done$ randomly.
+To ensure that new $v^*$ vertex are not very far from the previous $v^*$ we bound the size of results of \textsc{LocalSearch} procedure controlling by "next\_step\_k" parameter. Once \textsc{LocalSearch} can't find enough close not processed vertex, in line 7 we choice new $v^*$ from the set $\mathcal{V}_{not\_done}$ randomly. \\
+After we have processed all vertices from the the graph $G^a$. We do the same for vertices of graph $G^b$ (lines 21-22).  
 
 \begin{algorithm}
 \caption{\textsc{Merge1}($\mathcal{H}_a, \mathcal{H}_b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge1}
@@ -255,9 +256,7 @@ To ensure that new $v^*$ vertex are not very far from the previous $v^*$ we boun
 
 \subsection{Merge2}
 
-
-
-
+\textsc{Merge2} algorithm is similar to \textsc{Merge1} utilise \textsc{LocalSearch} procedure to reduce computation effort. The difference is that \textsc{Merge1} algorithm the next $v^*$ vertex choice from the same graph, while \textsc{Merge2} looks for new vertex $v^*$ in the both graphs $G^a$, and $G^b$. Thus in line 24  $v^*$  is chosen from the set $\mathcal{C}_{not\_done}$, which of not processed vertex from the both graph (line 21). The intuition laying behind \textsc{Merge2} algorithm is that allowing to choice new $v^*$ from the both graphs, we reduce the number of times what $v^*$ is chosen randomly, thereby minimise the number of using more expensive search procedure \textsc{HNSW-Search}.
 
 \begin{algorithm}
 \caption{\textsc{Merge2}($\mathcal{H}^a, \mathcal{H}^b,  \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge2}
