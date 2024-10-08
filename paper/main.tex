@@ -162,6 +162,36 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 \end{algorithmic}
 \end{algorithm}
 
+\subsection{Naive Merge}
+
+
+\begin{algorithm}
+\caption{\textsc{Merge-Naive}($\mathcal{H}_a, \mathcal{H}_b,  \ell, \text{search\_ef}$)}\label{alg:merge_naive}
+\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i)$, $\mathcal{H}_b = (G^b_i)$, and the level number $\ell$, search parameter $\text{search\_ef}$ \\
+\textbf{Ensure:} Merged graph $G^c$ 
+\begin{algorithmic}[1]
+\State $V^c \gets V^a \cup V^b$
+\State $E^c \gets \emptyset$
+\State $G^a \gets G^a_{\ell}$
+\State $G^b \gets G^b_{\ell}$
+\State $m \gets \mathcal{H}_a.m_0$ if $\ell = 0$ else $\mathcal{H}_a.m$
+
+\For{$v^* \in V^a$}
+    \State $\mathcal{C}^b \gets \textsc{HNSW-Search}(\mathcal{H} = \mathcal{H}^b, q = v^*, v_0, k = m, L = \text{search\_ef}, \ell)$
+    \State $\mathcal{C} \gets \{v : (v^*, v) \in E^a \} \cup \mathcal{C}^b$
+    \State $E^c \gets E^c \cup \{(v^*, v) : v \in \textsc{neighborhood\_construction}(\mathcal{C}, v^*, m)\}$
+\EndFor
+
+\For{$v^* \in V^b$}
+    \State $\mathcal{C}^a \gets \textsc{HNSW-Search}(\mathcal{H} = \mathcal{H}^a, q = v^*, v_0, k = m, L = \text{search\_ef}, \ell)$
+    \State $\mathcal{C} \gets \{v : (v^*, v) \in E^b \} \cup \mathcal{C}^a$
+    \State $E^c \gets E^c \cup \{(v^*, v) : v \in \textsc{neighborhood\_construction}(\mathcal{C}, v^*, m)\}$
+\EndFor
+
+\State \Return $G^c = (V^c, E^c)$
+\end{algorithmic}
+\end{algorithm}
+
 
 
 
