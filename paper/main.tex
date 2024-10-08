@@ -153,7 +153,7 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 % \State $\mathcal{H}_c \gets \emptyset$
 
 \For{$i = 0 \textbf{ to } \max(|\mathcal{H}_a|, |\mathcal{H}_b|) $}
-    \State $G^c_i \gets \text{Merge}(G^a_i, G^b_i, i)$
+    \State $G^c_i \gets \text{Merge}(\mathcal{H}_a, \mathcal{H}_b, \ell=i, \text{algorithm specific params})$
 \EndFor
 
 \State $\mathcal{H}_c \gets (G^c_i)_i^{\max(|\mathcal{H}_a|, |\mathcal{H}_b|)}$
@@ -169,11 +169,13 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 
 \begin{algorithm}
 \caption{\textsc{Merge1}($\mathcal{H}_a, \mathcal{H}_b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge1}
-\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$, the size of the forming neighborhoods $m \in \mathbb{N} $ \\
-\textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
+\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$, the merging layer number $\ell$, the size of the forming neighborhoods $m \in \mathbb{N}$, parameters $\text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k} \in \mathbb{N}$ \\
+\textbf{Ensure:}  Merged graph $G^c$ 
 \begin{algorithmic}[1]
-
+\State $V^c \gets V^a \cup V^b$
 \State $E^c \gets \emptyset$
+\State $G^a \gets G^a_{\ell} $
+\State $G^b \gets G^b_{\ell} $
 \State $\mathcal{V}_{not\_done} \gets V^a$
 
 \While{$\mathcal{V}_{not\_done} \neq \emptyset$}
@@ -188,7 +190,7 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
         
         \State $\mathcal{C} \gets  \{v : (v^*, v) \in E^a \} \cup \mathcal{C}^b$
         
-        \State $E^c[v^*] \gets \textsc{NeighborhoodConstruction}(\mathcal{C}, v^*, m, D_{merged})$
+        \State $E^c \gets E^c \cup  \{ (v^*, v)  : v \in \textsc{NeighborhoodConstruction}(\mathcal{C}, v^*, m) \}$
         
         \State $\mathcal{C}_{not\_done} \gets \{\mathcal{C}^b_1, \mathcal{C}^b_2, ..., \mathcal{C}^b_{ \text{next\_step\_k} } \} \cap \mathcal{V}_{not\_done}$
         
@@ -206,7 +208,7 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
     \State Repeat the same process for $V^b$ with the roles of $\mathcal{H}_a$ and $\mathcal{H}_b$ swapped.
 \EndWhile
 
-\State \Return $E^c$
+\State \Return $G^c=(V^c,E^c)$
 
 \end{algorithmic}
 \end{algorithm}
@@ -220,12 +222,15 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
 
 
 \begin{algorithm}
-\caption{\textsc{Merge2}($G^a, G^b, \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge2}
-\textbf{Require:} The graphs $G^a=(V^a,E^a), G^b=(V^b,E^b)$, the size of the forming neighborhoods $m \in \mathbb{N} $ \\
-\textbf{Ensure:}  Merged HNSW graphs $\mathcal{H}_c = (G^c_i)$ 
+\caption{\textsc{Merge2}($\mathcal{H}^a, \mathcal{H}^b,  \ell, \text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M, m$)}\label{alg:merge2}
+\textbf{Require:} The HNSW graphs $\mathcal{H}_a = (G^a_i), \mathcal{H}_b = (G^b_i)$, the number of merged layers, the size of the forming neighborhoods $m \in \mathbb{N} $, parameters $\text{jump\_ef}, \text{local\_ef}, \text{next\_step\_k}, M \in \mathbb{N}$ \\
+\textbf{Ensure:}  Merged graph $G^c$ 
 \begin{algorithmic}[1]
 
+\State $V^c \gets V^a \cup V^b$
 \State $E^c \gets \emptyset$
+\State $G^a \gets G^a_{\ell} $
+\State $G^b \gets G^b_{\ell} $
 % \State $m \gets \mathcal{H}_a.m_0 \text{ if } \ell = 0 \text{ else } \mathcal{H}_a.m$
 \State $\mathcal{V}_{not\_done} \gets V^a \cup V^b$
 
@@ -251,8 +256,6 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
             \State $\mathcal{C} \gets  \{v : (v^*, v) \in E^b \} \cup  \mathcal{C}^a\}$
         \EndIf
         
-        % \State $\mathcal{E}_{merged}[v^*] \gets \text{neighborhood\_construction}(\mathcal{C}_{merged}, v^*, m, D_{merged})$
-
         \State $E^c \gets E^c \cup \{ (v^*, v) : v \in \text{neighborhood\_construction}(\mathcal{C}, v^*, m) \}$
         
         \State $\mathcal{C}^a_{not\_done} \gets \{\mathcal{C}^a_1, \mathcal{C}^a_2, ..., \mathcal{C}^a_{ \text{next\_step\_k} } \} \cap \mathcal{V}_{not\_done}$
@@ -273,7 +276,7 @@ There are different strategies to form a vertex neighborhood. Our proposed merge
     \EndWhile
 \EndWhile
 
-\State \Return $E^c$
+\State \Return $G^c=(V^c,E^c)$
 
 
 \end{algorithmic}
