@@ -321,8 +321,8 @@ After we have processed all vertices from the the graph $G^a$. We do the same fo
 \end{algorithm}
 
 \section{Computational Experiments}
-We implemented proposed algorithms using python. In order to be independent of the implementation details and low level optimisation, we do comparison of algorithms based on the number of distance computation during the merge process. 
-
+We implemented proposed algorithms using python. For experiments we use Sift1m dataset divided into two subset of 500k vectors at each. Our algorithm merge that two subsets of 500k vectors. In order to be independent of the implementation details and low level optimisation, we do comparison of the algorithms based on the number of distance computation during the merge process. \ref{fig:sfig1} shows that \textsc{Merge1} about 5 times less computations than naive algorithm. Surprisingly \textsc{Merge2} algorithm do slightly more computations than \textsc{Merge1}, nevertheless it significantly outperform \textsc{merge-naive} algorithm.\\
+The other important characteristics of merging process is how accurate the merge is done. It can be easily verified for the case of \textsc{KNN-Neighborhood-Construction} procedure, by comparing the set of merged neighborhoods with k-nearest-neighbor set for each vertex. However to follow the same way in the case of \textsc{RNG-Neighborhood-Construction} is not good idea, because the \textsc{RNG-Neighborhood-Construction} is one of the possible heuristic for Voronoi-cell approximation. Therefore we measure the recall-distance computation trade off of \textsc{HNSW-Search} procedure on the HNSW graphs before merging, and after. As can be seen from the \ref{fig:sfig2} the recall/computational trade off of naive algorithm is slightly better than  \textsc{Merge1}, and  \textsc{Merge2} has. 
 
 
 \begin{figure}
@@ -335,7 +335,7 @@ We implemented proposed algorithms using python. In order to be independent of t
 \begin{subfigure}{.5\textwidth}
   \centering
   \includegraphics[width=1.\linewidth]{figs/recall-comparsion.pdf}
-  \caption{Recall}
+  \caption{Recall/computation trade off}
   \label{fig:sfig2}
 \end{subfigure}
 \caption{Merging algorithm comparison}
