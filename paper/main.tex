@@ -22,33 +22,16 @@
 
 \maketitle
 
+\section{Introduction}
+In this paper we presented three algorithms for merging navigable graphs, specifically Hierarchical Navigable Small World (HNSW) graphs, which are used for efficient nearest neighbor searches.
+
+Merging HNSW graphs is important for optimizing vector search systems, especially in large-scale databases and distributed environments. It consolidates data from different partitions or batches, improving search efficiency and unifying querying processes. For vector index compaction, merging reduces redundancy, saves memory, and improves search performance by compacting the graph structure. It supports incremental updates, allowing new data to be added without rebuilding the entire index. This is crucial for dynamic systems where data grows or changes frequently. Merging also helps combine embeddings from different models or datasets into a unified index, benefiting applications like search engines, recommendation systems, and machine learning pipelines. It provides a single query interface for cross-organizational or distributed data sources, ensuring seamless access. In recommender systems, it enhances performance and accuracy by unifying item indices. Merged graphs lead to more efficient memory usage and faster query response times. It enables better management of vector embeddings in vector databases, minimizing complexity. The process is especially useful for handling incremental updates, reducing the need for full index rebuilds. Ultimately, merging HNSW graphs boosts performance in vector search and retrieval tasks across diverse applications.
+
+The three algorithms proposed are “Naive Merge”, “Merge1”, and “Merge2”, each progressively building on the previous to offer more optimized and efficient strategies for merging two graph structures.
+
+The algorithms are designed to address the problem of merging two distinct HNSW structures, $\mathcal{H}_a$ and $\mathcal{H}_b$, into a new, merged structure $\mathcal{H}_c$. This process is particularly useful in dynamic scenarios where multiple HNSW graphs may need to be combined without fully recomputing from scratch
+
 \section {Search}
-
-
-% \begin{algorithm}
-% \caption{\textsc{Search}($G, q, L$)}\label{alg:search}
-% \textbf{Require:} Graph $G = (V, E)$, query $q \in \mathbb{R}^d$, $L \in \mathbb{Z}$ \\
-% \textbf{Ensure:} approximate nearest neighbor $v^* \in V$
-% \begin{algorithmic}[1]
-% \State $C \gets \textsc{InitializeCandidates}()$
-% \While{True}
-%     \State $u \gets$ nearest unvisited point to $q$ in $C$
-%     \State $U \gets \{v \mid (u, v) \in E\}$
-%     \For{$v \in U$}
-%         \If{$v$ is not visited}
-%             \State $C \gets C \cup \{v\}$
-%         \EndIf
-%     \EndFor
-%     \If{$|C| > L$}
-%         \State $C \gets$ top $L$ nearest points to $q$ in $C$
-%     \EndIf
-%     \If{$C$ is not updated}
-%         \State \textbf{break}
-%     \EndIf
-% \EndWhile
-% \State \Return nearest point to $q$ in $C$
-% \end{algorithmic}
-% \end{algorithm}
 
 We start from the basic search over the graph. 
 
