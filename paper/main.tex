@@ -84,42 +84,42 @@ It helps to avoid local minima vertexes. In [HNSW] paper it is named \textbf{ef}
 There are different strategies to form a vertex neighborhood. Our proposed merge algorithms are independent in neighborhood procedures. Merge algorithm can use a neighborhood construction procedure as an input parameter.
 
 \begin{algorithm}
-\caption{\textsc{KNN-Neighborhood-Construction}$(u,U, k)$}
+\caption{\textsc{KNN-Neighborhood-Construction}$(v^*,C, k)$}
 \label{alg:knntrategy}
-\textbf{Require:} vertex $u \in V$, neighbor candidates $U \subseteq V$, $k \in \mathbb{N} $\\
-\textbf{Ensure:} selected neighbors $U' \subseteq U$
+\textbf{Require:} vertex $v^* \in V$, neighbor candidates $C \subseteq V$, $k \in \mathbb{N} $\\
+\textbf{Ensure:} selected neighbors $C' \subseteq C$
 \begin{algorithmic}[1]
     
-    \State $U' \gets \text{k-closest neighbors of } U \text{ to } u$
-    \State \Return $U'$
+    \State $C' \gets \text{k-closest neighbors of } C \text{ to } v^*$
+    \State \Return $C'$
 \end{algorithmic}
 \end{algorithm}
 
 \begin{algorithm}
-\caption{\textsc{RNG-Neighborhood-Construction}$(u, U, m)$}
+\caption{\textsc{RNG-Neighborhood-Construction}$(v^*, C, m)$}
 \label{alg:rngstrategy}
-\textbf{Require:} vertex $u \in V$, neighbor candidates $U \subseteq V$, maximum neighborhood size $m \in \mathbb{N}$\\
-\textbf{Ensure:} selected neighbors $U' \subseteq U$
+\textbf{Require:} vertex $v^* \in V$, neighbor candidates $C \subseteq V$, maximum neighborhood size $m \in \mathbb{N}$\\
+\textbf{Ensure:} selected neighbors $C' \subseteq C$
 \begin{algorithmic}[1]
-    \State sort $v \in U$ in ascending order of $\delta(u,v)$
-    \State $U' \gets \emptyset$
+    \State sort $v \in C$ in ascending order of $\rho(v^*,v)$
+    \State $C' \gets \emptyset$
     \For{$v \in U$}
         \State $f \gets \text{true}$
-        \For{$w \in U'$}
-            \If{$\delta(u,v) \geq \delta(v,w)$}
+        \For{$w \in C'$}
+            \If{$\delta(v^*,v) \geq \delta(v,w)$}
                 \State $f \gets \text{false}$
                 \State \textbf{break}
             \EndIf
         \EndFor
         \If{$f$}
-            \State $U' \gets U' \cup \{v\}$
+            \State $C' \gets C' \cup \{v\}$
         \EndIf
 
-        \If{$|U'| \geq m $}
+        \If{$|C'| \geq m $}
             \State \textbf{break}
         \EndIf
     \EndFor
-    \State \Return $U'$
+    \State \Return $C'$
 \end{algorithmic}
 \end{algorithm}
 
