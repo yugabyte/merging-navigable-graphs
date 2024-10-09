@@ -6,15 +6,11 @@ import random
 
 def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
     hnsw_merged = HNSW(distance_func=hnsw_a.distance_func, m=hnsw_a.m, m0=hnsw_a.m0, ef=hnsw_a.ef, ef_construction=hnsw_a.ef_construction, neighborhood_construction = hnsw_a.neighborhood_construction)
-    hnsw_merged.data = merged_data
-    hnsw_merged.graphs = [] # sequence of merged graphs (layers)
+    hnsw_merged.data = merged_data 
+    hnsw_merged.graphs = [] # sequence of merged graphs (layers) denoted as $G^C_i$
     levels_merged_max = max(len(hnsw_a.graphs), len(hnsw_b.graphs))
     levels_merged_min = min(len(hnsw_a.graphs), len(hnsw_b.graphs))
-
-    if len(hnsw_a.graphs) >= len(hnsw_b.graphs):
-        hnsw_merged.enter_point = hnsw_a.enter_point
-    else:
-        hnsw_merged.enter_point = hnsw_b.enter_point
+    
 
     for level in range(levels_merged_min): 
         print('Merging level:', level)
@@ -25,6 +21,11 @@ def hnsw_general_merge(hnsw_a, hnsw_b, merged_data, layer_merge_func):
             hnsw_merged.graphs.append(hnsw_a.graphs[level])
         else:
             hnsw_merged.graphs.append(hnsw_b.graphs[level])
+
+    if len(hnsw_a.graphs) >= len(hnsw_b.graphs):
+        hnsw_merged.enter_point = hnsw_a.enter_point
+    else:
+        hnsw_merged.enter_point = hnsw_b.enter_point
 
     return hnsw_merged
 
@@ -75,7 +76,7 @@ def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef, local_ef, next_ste
     next_step_ef – a purpose of this parameter is similar {next_step_k}
     M            – number of starting point for the local search.  
     '''
-    merged_edges = {}
+    merged_edges = {} # merged graph
     not_done = set(hnsw_a.graphs[level].keys())
     m = hnsw_a.m0 if level == 0 else hnsw_a.m
     
@@ -98,7 +99,8 @@ def merge1_layer(hnsw_a, hnsw_b, merged_data, level, jump_ef, local_ef, next_ste
             merged_edges[curr_idx] = hnsw_a.neighborhood_construction(candidates, merged_data[curr_idx], m, hnsw_a.distance_func, merged_data)
 
             # Determine new set of entry points for search in hnsw_b
-            staring_points = [idx for idx, dist in candidates_b[:m]]
+            # staring_points = [idx for idx, dist in candidates_b[:m]]
+            staring_points = [idx for idx, dist in candidates_b[:M]]
 
             # Perform local search at graph A to find next candidate
             candidates_a = hnsw_a.beam_search(graph=hnsw_a.graphs[level], q=hnsw_a.data[curr_idx], k=next_step_k, eps=[curr_idx], ef=next_step_ef, return_observed=False)
